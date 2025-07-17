@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Table, Badge, Button } from 'react-bootstrap';
 import { FaBell, FaCheckCircle } from 'react-icons/fa';
-import { apiService } from '../services/api';
 
 interface Alarm {
   id: string;
@@ -18,37 +17,57 @@ const Alarms: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // localStorage'tan alarm listesini yükle
   const loadAlarms = async () => {
-    try {
-      setLoading(true);
-      const response = await apiService.getAlarms();
-      setAlarms(response.data);
-      setError(null);
-    } catch (error) {
-      console.error('Alarmlar yüklenirken hata:', error);
-      setError('Alarmlar yüklenirken bir hata oluştu.');
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    const storedAlarms = localStorage.getItem('alarmLog');
+    if (storedAlarms) {
+      setAlarms(JSON.parse(storedAlarms));
+    } else {
+      setAlarms([]);
     }
-  };
+    setError(null);
+  } catch (error) {
+    console.error('Alarmlar yüklenirken hata:', error);
+    setError('Alarmlar yüklenirken bir hata oluştu.');
+  } finally {
+    setLoading(false);
+  }
+  <Button
+  variant="outline-danger"
+  size="sm"
+  onClick={() => {
+    localStorage.removeItem('alarmLog');
+    setAlarms([]);
+  }}
+>
+  Geçmişi Temizle
+</Button>
+
+};
+
 
   useEffect(() => {
     loadAlarms();
   }, []);
 
-  const handleResolve = async (alarmId: string) => {
-    try {
-      await apiService.resolveAlarm(alarmId);
-      setAlarms(alarms.map(alarm => 
-        alarm.id === alarmId 
-          ? { ...alarm, status: 'resolved' } 
-          : alarm
-      ));
-    } catch (error) {
-      console.error('Alarm çözülürken hata:', error);
-      setError('Alarm çözülürken bir hata oluştu.');
-    }
-  };
+  // Alarmı çözülmüşe işaretle ve localStorage'a kaydet
+ const handleResolve = (alarmId: string) => {
+  try {
+    const updatedAlarms: Alarm[] = alarms.map(alarm =>
+      alarm.id === alarmId
+        ? { ...alarm, status: 'resolved' }
+        : alarm
+    );
+
+    setAlarms(updatedAlarms);
+    localStorage.setItem('alarmLog', JSON.stringify(updatedAlarms));
+  } catch (error) {
+    console.error('Alarm çözülürken hata:', error);
+    setError('Alarm çözülürken bir hata oluştu.');
+  }
+};
 
   const getStatusBadge = (status: Alarm['status']) => {
     return status === 'active' ? (
@@ -85,8 +104,8 @@ const Alarms: React.FC = () => {
               <FaBell className="me-2" />
               Alarmlar
             </h5>
-            <Button 
-              variant="outline-primary" 
+            <Button
+              variant="outline-primary"
               size="sm"
               onClick={loadAlarms}
             >
@@ -133,9 +152,7 @@ const Alarms: React.FC = () => {
                       {alarm.threshold}
                       {alarm.type === 'temperature' ? '°C' : '%'}
                     </td>
-                    <td>
-                      {new Date(alarm.timestamp).toLocaleString('tr-TR')}
-                    </td>
+                    <td>{new Date(alarm.timestamp).toLocaleString('tr-TR')}</td>
                     <td>{getStatusBadge(alarm.status)}</td>
                     <td>
                       {alarm.status === 'active' && (
@@ -159,4 +176,4 @@ const Alarms: React.FC = () => {
   );
 };
 
-export default Alarms; 
+export default Alarms;

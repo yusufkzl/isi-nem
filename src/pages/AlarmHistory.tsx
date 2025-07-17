@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Form, InputGroup, Badge, Spinner } from 'react-bootstrap';
+import { Card, Table, Form, InputGroup, Badge, Spinner, Button } from 'react-bootstrap';
 import { FaSearch, FaThermometerHalf, FaTint, FaExclamationTriangle } from 'react-icons/fa';
-import axios from 'axios';
 
 interface Alarm {
   id: string;
@@ -9,38 +8,54 @@ interface Alarm {
   type: 'temperature' | 'humidity';
   value: number;
   threshold: number;
-  status: 'high' | 'low';
+  status: 'high' | 'low' | 'resolved';
+  sensorId: string;
 }
 
 const AlarmHistory: React.FC = () => {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const fetchAlarms = async () => {
+      setIsLoading(true);
+      try {
+        const stored = localStorage.getItem('alarmLog');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setAlarms(parsed);
+        } else {
+          setAlarms([]);
+        }
+      } catch (error) {
+        console.error('Alarm verisi çekme hatası:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchAlarms();
   }, []);
 
-  const fetchAlarms = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get('/api/alarms');
-      setAlarms(response.data);
-    } catch (error) {
-      console.error('Alarm verisi çekme hatası:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+const handleResolveAlarm = (alarmId: string) => {
+  const updated: Alarm[] = alarms.map(alarm =>
+    alarm.id === alarmId ? { ...alarm, status: 'resolved' } : alarm
+  );
+
+  setAlarms(updated);
+  localStorage.setItem('alarmLog', JSON.stringify(updated));
+};
+
 
   const getStatusBadge = (status: string, type: string) => {
-    const color = status === 'high' ? 'danger' : 'info';
+    const color = status === 'high' ? 'danger' : status === 'low' ? 'info' : 'success';
     const icon = type === 'temperature' ? <FaThermometerHalf /> : <FaTint />;
-    
+
     return (
       <Badge bg={color} className="d-inline-flex align-items-center gap-1 p-2">
         {icon}
-        {status === 'high' ? 'Yüksek' : 'Düşük'}
+        {status === 'high' ? 'Yüksek' : status === 'low' ? 'Düşük' : 'Çözüldü'}
       </Badge>
     );
   };
@@ -50,6 +65,7 @@ const AlarmHistory: React.FC = () => {
     return (
       alarm.type.toLowerCase().includes(searchString) ||
       alarm.status.toLowerCase().includes(searchString) ||
+      alarm.sensorId.toLowerCase().includes(searchString) ||
       new Date(alarm.timestamp).toLocaleString().toLowerCase().includes(searchString)
     );
   });
@@ -86,16 +102,19 @@ const AlarmHistory: React.FC = () => {
               <Table hover className="align-middle">
                 <thead>
                   <tr>
+                    <th>Sensör</th>
                     <th>Tarih/Saat</th>
                     <th>Tip</th>
                     <th>Değer</th>
                     <th>Limit</th>
                     <th>Durum</th>
+                    <th>İşlem</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAlarms.map(alarm => (
                     <tr key={alarm.id} className="alarm-row">
+                      <td>{alarm.sensorId}</td>
                       <td>{new Date(alarm.timestamp).toLocaleString()}</td>
                       <td>
                         <div className="d-flex align-items-center">
@@ -118,6 +137,17 @@ const AlarmHistory: React.FC = () => {
                         {alarm.type === 'temperature' ? '°C' : '%'}
                       </td>
                       <td>{getStatusBadge(alarm.status, alarm.type)}</td>
+                      <td>
+                        {alarm.status !== 'resolved' && (
+                          <Button
+                            variant="outline-success"
+                            size="sm"
+                            onClick={() => handleResolveAlarm(alarm.id)}
+                          >
+                            Çözüldü
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -137,4 +167,4 @@ const AlarmHistory: React.FC = () => {
   );
 };
 
-export default AlarmHistory; 
+export default AlarmHistory;

@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { Card, Row, Col, Badge, Button, OverlayTrigger, Tooltip, Modal } from 'react-bootstrap';
 import { FaThermometerHalf, FaTint, FaHistory, FaCog } from 'react-icons/fa';
 import { Line } from 'react-chartjs-2';
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
+
+
 
 interface Alert {
   id: string;
@@ -105,54 +109,43 @@ const SensorCard: React.FC<SensorCardProps> = ({
               </small>
             </div>
           </div>
+<div className="gauge-grid">
+  <div className="gauge">
+    <CircularProgressbar
+      value={temperature}
+      maxValue={40}
+      text={`${temperature.toFixed(1)}°C`}
+      strokeWidth={6}
+      styles={buildStyles({
+        pathColor: '#e67e22',
+        textColor: '#333',
+        trailColor: '#eee',
+        textSize: '10px',
+      })}
+    />
+    <div className="timestamp mt-2 text-muted" style={{ fontSize: '0.9rem' }}>
+  Ölçüm zamanı: {new Date(timestamp).toLocaleString()}
+</div>
 
-          <Row className="g-3">
-            <Col sm={6}>
-              <Card className={`border-0 bg-${getStatusColor(temperature, 'temperature')} bg-opacity-10`}>
-                <Card.Body>
-                  <div className="d-flex align-items-center mb-2">
-                    <FaThermometerHalf 
-                      className={`text-${getStatusColor(temperature, 'temperature')} me-2`} 
-                      size={24} 
-                    />
-                    <h6 className="mb-0">Sıcaklık</h6>
-                  </div>
-                  <div className="d-flex align-items-baseline">
-                    <h3 className="mb-0">
-                      {temperature.toFixed(1)}
-                    </h3>
-                    <span className="ms-1">°C</span>
-                  </div>
-                  <small className="text-muted d-block mt-2">
-                    Limit: {thresholds.temperature.min}°C - {thresholds.temperature.max}°C
-                  </small>
-                </Card.Body>
-              </Card>
-            </Col>
+    <div className="gauge-label">Sıcaklık</div>
+  </div>
+  <div className="gauge">
+    <CircularProgressbar
+      value={humidity}
+      maxValue={100}
+      text={`${humidity.toFixed(1)}%`}
+       strokeWidth={6}
+      styles={buildStyles({
+        pathColor: '#3498db',
+        textColor: '#333',
+        trailColor: '#eee',
+        textSize: '10px',
+      })}
+    />
+    <div className="gauge-label">Nem</div>
+  </div>
+</div>
 
-            <Col sm={6}>
-              <Card className={`border-0 bg-${getStatusColor(humidity, 'humidity')} bg-opacity-10`}>
-                <Card.Body>
-                  <div className="d-flex align-items-center mb-2">
-                    <FaTint 
-                      className={`text-${getStatusColor(humidity, 'humidity')} me-2`} 
-                      size={24} 
-                    />
-                    <h6 className="mb-0">Nem</h6>
-                  </div>
-                  <div className="d-flex align-items-baseline">
-                    <h3 className="mb-0">
-                      {humidity.toFixed(1)}
-                    </h3>
-                    <span className="ms-1">%</span>
-                  </div>
-                  <small className="text-muted d-block mt-2">
-                    Limit: {thresholds.humidity.min}% - {thresholds.humidity.max}%
-                  </small>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
 
           {alerts.length > 0 && (
             <div className="mt-3">

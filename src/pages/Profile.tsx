@@ -9,6 +9,13 @@ const Profile: React.FC = () => {
     newPassword: '',
     confirmPassword: ''
   });
+  const [passwordError, setPasswordError] = useState('');
+  
+  const [settings, setSettings] = useState({
+  twoFactor: false,
+  activityLog: false,
+  loginAlerts: false
+});
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -18,15 +25,41 @@ const Profile: React.FC = () => {
     }));
   };
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // API çağrısı burada yapılacak
-    setShowPasswordModal(false);
-  };
+ const handlePasswordSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-  const handleLogout = () => {
-    // Çıkış işlemi burada yapılacak
-  };
+  // Yeni şifreler aynı mı kontrol et
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    setPasswordError('Yeni şifreler aynı değil.');
+    return;
+  }
+
+  // Şimdilik eski şifreyi kontrol etmiyoruz, sadece loglayalım
+  console.log('Şifre değiştirme datası:', passwordForm);
+  // TODO: Buraya API çağrısı eklenecek
+
+  // Mock başarı
+  alert('Şifre başarıyla değiştirildi!');
+
+  // Formu temizle
+  setPasswordForm({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  setPasswordError('');
+  setShowPasswordModal(false);
+};
+
+
+ const handleLogout = () => {
+  // TODO: gerçek logout işlemi burada olacak
+  console.log('Kullanıcı çıkış yaptı.');
+  localStorage.removeItem('token');
+  // Sahte yönlendirme
+  window.location.href = '/login';
+};
+
 
   return (
     <div className="profile-page">
@@ -50,7 +83,7 @@ const Profile: React.FC = () => {
                   <FaCamera />
                 </Button>
               </div>
-              <h4>Yusuf Kaplan</h4>
+              <h4>Zeynep Ceren Kocaoglu</h4>
               <p className="text-muted mb-4">Sistem Yöneticisi</p>
               <Button
                 variant="outline-danger"
@@ -78,7 +111,7 @@ const Profile: React.FC = () => {
                       </Form.Label>
                       <Form.Control
                         type="text"
-                        defaultValue="Yusuf Kaplan"
+                        defaultValue="Zeynep Ceren Kocaoglu"
                         className="bg-light"
                       />
                     </Form.Group>
@@ -91,7 +124,7 @@ const Profile: React.FC = () => {
                       </Form.Label>
                       <Form.Control
                         type="email"
-                        defaultValue="yusuf@example.com"
+                        defaultValue="zeynep@example.com"
                         className="bg-light"
                       />
                     </Form.Group>
@@ -113,29 +146,36 @@ const Profile: React.FC = () => {
           </Card>
 
           <Card className="shadow-sm">
-            <Card.Body>
-              <h5 className="mb-4">Hesap Ayarları</h5>
-              <Form>
-                <Form.Check
-                  type="switch"
-                  id="two-factor"
-                  label="İki Faktörlü Doğrulama"
-                  className="mb-3"
-                />
-                <Form.Check
-                  type="switch"
-                  id="activity-log"
-                  label="Aktivite Günlüğü"
-                  className="mb-3"
-                />
-                <Form.Check
-                  type="switch"
-                  id="login-alerts"
-                  label="Giriş Uyarıları"
-                />
-              </Form>
-            </Card.Body>
-          </Card>
+  <Card.Body>
+    <h5 className="mb-4">Hesap Ayarları</h5>
+    <Form>
+      <Form.Check
+        type="switch"
+        id="two-factor"
+        label="İki Faktörlü Doğrulama"
+        className="mb-3"
+        checked={settings.twoFactor}
+        onChange={(e) => setSettings({ ...settings, twoFactor: e.target.checked })}
+      />
+      <Form.Check
+        type="switch"
+        id="activity-log"
+        label="Aktivite Günlüğü"
+        className="mb-3"
+        checked={settings.activityLog}
+        onChange={(e) => setSettings({ ...settings, activityLog: e.target.checked })}
+      />
+      <Form.Check
+        type="switch"
+        id="login-alerts"
+        label="Giriş Uyarıları"
+        checked={settings.loginAlerts}
+        onChange={(e) => setSettings({ ...settings, loginAlerts: e.target.checked })}
+      />
+    </Form>
+  </Card.Body>
+</Card>
+
         </Col>
       </Row>
 
@@ -145,6 +185,7 @@ const Profile: React.FC = () => {
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={handlePasswordSubmit}>
+            {passwordError && (<div className="text-danger mb-3">{passwordError}</div>)}
             <Form.Group className="mb-3">
               <Form.Label>Mevcut Şifre</Form.Label>
               <Form.Control

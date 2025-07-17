@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Form, Button, Row, Col, Toast } from 'react-bootstrap';
 import { FaThermometerHalf, FaTint, FaBell, FaPalette, FaSave } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
@@ -24,16 +24,33 @@ const Settings: React.FC = () => {
   const { isDarkMode, toggleTheme } = useTheme();
   const [showToast, setShowToast] = useState(false);
   
-  const [thresholds, setThresholds] = useState<ThresholdSettings>({
-    temperature: { min: 18, max: 28 },
-    humidity: { min: 30, max: 60 }
-  });
 
-  const [notifications, setNotifications] = useState<NotificationSettings>({
-    email: true,
-    push: true,
-    sms: false
-  });
+
+const [thresholds, setThresholds] = useState<ThresholdSettings>({
+  temperature: { min: 18, max: 28 },
+  humidity: { min: 30, max: 60 }
+});
+
+const [notifications, setNotifications] = useState<NotificationSettings>({
+  email: true,
+  push: true,
+  sms: false
+});
+
+// Sayfa ilk açıldığında localStorage'dan verileri çek
+useEffect(() => {
+  const savedThresholds = localStorage.getItem('thresholds');
+  const savedNotifications = localStorage.getItem('notifications');
+
+  if (savedThresholds) {
+    setThresholds(JSON.parse(savedThresholds));
+  }
+
+  if (savedNotifications) {
+    setNotifications(JSON.parse(savedNotifications));
+  }
+}, []);
+
 
   const handleThresholdChange = (
     type: 'temperature' | 'humidity',
@@ -56,15 +73,22 @@ const Settings: React.FC = () => {
     }));
   };
 
-  const handleSave = async () => {
-    try {
-      // API çağrısı burada yapılacak
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setShowToast(true);
-    } catch (error) {
-      console.error('Ayarları kaydetme hatası:', error);
-    }
-  };
+const handleSave = async () => {
+  try {
+    // Eşik değerleri ve bildirim tercihlerini localStorage’a yaz
+    localStorage.setItem('thresholds', JSON.stringify(thresholds));
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+
+    // API çağrısı yapılacaksa burada olabilir
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    setShowToast(true); // Toast göster
+  } catch (error) {
+    console.error('Ayarları kaydetme hatası:', error);
+  }
+};
+
+
 
   return (
     <div className="settings-page">

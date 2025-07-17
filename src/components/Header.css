@@ -1,0 +1,10 @@
+/* Header.css */
+.custom-navbar {
+  background-color: #3a73b4 !important;
+}
+
+.custom-navbar {
+  background-color: #3a73b4 !important;
+  z-index: 1050;
+  position: relative;
+}

@@ -377,3 +377,71 @@
   opacity: 1;
   transform: scale(1) translateY(0);
 } 
+
+/* Karanlık Mod Ana Yapı */
+.dark-mode {
+  background-color: #121212;
+  color: #f5f5f5;
+}
+
+/* Navbar */
+.dark-mode .navbar,
+.dark-mode .custom-navbar {
+  background-color: #1a1a1a !important;
+  color: #f5f5f5 !important;
+}
+
+/* Kartlar, tablo vs */
+.dark-mode .sensor-card,
+.dark-mode .card,
+.dark-mode .table,
+.dark-mode .dropdown-menu,
+.dark-mode .alarm-card {
+  background-color: #1f1f1f !important;
+  color: #f5f5f5 !important;
+  border-color: #333;
+}
+
+/* Başlıklar ve yazı tipleri */
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode h4,
+.dark-mode h5,
+.dark-mode p,
+.dark-mode span,
+.dark-mode td,
+.dark-mode th,
+.dark-mode label {
+  color: #f5f5f5 !important;
+}
+
+/* Formlar ve input alanları */
+.dark-mode input,
+.dark-mode select,
+.dark-mode textarea,
+.dark-mode .form-control {
+  background-color: #2a2a2a !important;
+  color: #ffffff !important;
+  border: 1px solid #555 !important;
+}
+
+/* Butonlar */
+.dark-mode .btn {
+  background-color: #333 !important;
+  color: #f5f5f5 !important;
+  border: 1px solid #444 !important;
+}
+
+/* Scrollbar (isteğe bağlı) */
+.dark-mode ::-webkit-scrollbar {
+  width: 10px;
+}
+
+.dark-mode ::-webkit-scrollbar-track {
+  background: #1f1f1f;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+  background: #555;
+}
