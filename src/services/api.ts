@@ -23,32 +23,32 @@ export interface Alarm {
   status: 'active' | 'resolved';
 }
 
-// Simüle edilmiş API çağrıları
 export const apiService = {
+  // ✅ Gerçek veriyi backend'den alır
   getCurrentData: async (): Promise<SensorData[]> => {
-    // Simüle edilmiş veri
-    return [
-      {
-        id: '1',
-        temperature: 24 + Math.random() * 2,
-        humidity: 45 + Math.random() * 5,
-        timestamp: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        temperature: 22 + Math.random() * 2,
-        humidity: 50 + Math.random() * 5,
-        timestamp: new Date().toISOString(),
-      },
-    ];
+    const response = await fetch('https://f20609b3a1fe.ngrok-free.app/api/evant/getAll');
+    if (!response.ok) {
+      throw new Error('Veri alınamadı');
+    }
+
+    const rawData = await response.json();
+
+    const formattedData: SensorData[] = rawData.map((item: any) => ({
+      id: String(item.id),
+      temperature: item.temperature,
+      humidity: item.humidity,
+      timestamp: item.measurement_time || item.measurementTime,
+    }));
+
+    return formattedData;
   },
 
+  // Diğerleri mock (değiştirmene gerek yok şimdilik)
   getHistoricalData: async (startDate: string, endDate: string): Promise<HistoricalData> => {
-    // Simüle edilmiş veri
     const data = [];
     const start = new Date(startDate).getTime();
     const end = new Date(endDate).getTime();
-    const interval = (end - start) / 24; // 24 veri noktası
+    const interval = (end - start) / 24;
 
     for (let i = 0; i < 24; i++) {
       data.push({
@@ -62,16 +62,14 @@ export const apiService = {
   },
 
   updateThresholds: async (thresholds: { temperature: number; humidity: number }): Promise<void> => {
-    // Simüle edilmiş API çağrısı
     await new Promise(resolve => setTimeout(resolve, 500));
   },
 
   exportData: async (startDate: string, endDate: string): Promise<Blob> => {
-    // Simüle edilmiş CSV verisi
     const data = await apiService.getHistoricalData(startDate, endDate);
     const csvContent = [
       'Tarih,Sıcaklık (°C),Nem (%)',
-      ...data.data.map(row => 
+      ...data.data.map(row =>
         `${new Date(row.timestamp).toLocaleString('tr-TR')},${row.temperature},${row.humidity}`
       ),
     ].join('\n');
@@ -80,7 +78,6 @@ export const apiService = {
   },
 
   getAlarms: async (): Promise<{ data: Alarm[] }> => {
-    // Simüle edilmiş alarm verileri
     const alarms: Alarm[] = [
       {
         id: '1',
@@ -100,25 +97,15 @@ export const apiService = {
         threshold: 60,
         status: 'active',
       },
-      {
-        id: '3',
-        sensorId: '1',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        type: 'temperature',
-        value: 29,
-        threshold: 27,
-        status: 'resolved',
-      },
     ];
 
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simüle edilmiş gecikme
+    await new Promise(resolve => setTimeout(resolve, 500));
     return { data: alarms };
   },
 
   resolveAlarm: async (alarmId: string): Promise<void> => {
-    // Simüle edilmiş API çağrısı
     await new Promise(resolve => setTimeout(resolve, 500));
   },
 };
 
-export default apiService; 
+export default apiService;

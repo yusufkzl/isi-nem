@@ -1,5 +1,3 @@
-// src/services/mockData.ts
-
 export interface SensorReading {
   hour: string;
   temperature: number;
@@ -11,21 +9,53 @@ export interface SensorHistoryData {
   sensor2: SensorReading[];
 }
 
-function generateMockReadings(): SensorReading[] {
-  const readings: SensorReading[] = [];
+export async function getSensorHistoryData(
+  date: string,
+  startTime: string,
+  endTime: string
+): Promise<SensorHistoryData> {
+  try {
+    const response = await fetch('https://f20609b3a1fe.ngrok-free.app/api/evant/getAll');
+    if (!response.ok) {
+      throw new Error('Veri alınamadı');
+    }
 
-  for (let i = 0; i < 24; i++) {
-    readings.push({
-      hour: `${i.toString().padStart(2, '0')}:00`,
-      temperature: 20 + Math.random() * 5,
-      humidity: 40 + Math.random() * 10,
+    const rawData = await response.json();
+
+    const sensor1: SensorReading[] = [];
+    const sensor2: SensorReading[] = [];
+
+    rawData.forEach((item: any) => {
+      const hour = new Date(item.measurement_time || item.measurementTime).toLocaleTimeString('tr-TR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+
+      const reading: SensorReading = {
+        hour,
+        temperature: item.temperature,
+        humidity: item.humidity,
+      };
+
+      if (item.id === 1) {
+        sensor1.push(reading);
+      } else if (item.id === 2) {
+        sensor2.push(reading);
+      }
     });
-  }
 
-  return readings;
+    return {
+      sensor1: filterByTimeRange(sensor1, startTime, endTime),
+      sensor2: filterByTimeRange(sensor2, startTime, endTime),
+    };
+
+  } catch (error) {
+    console.error('Gerçek veri alınırken hata:', error);
+    throw error;
+  }
 }
 
-// ✅ Saat aralığı filtresi
 function filterByTimeRange(data: SensorReading[], startTime: string, endTime: string): SensorReading[] {
   const startHour = parseInt(startTime.split(':')[0], 10);
   const endHour = parseInt(endTime.split(':')[0], 10);
@@ -34,21 +64,4 @@ function filterByTimeRange(data: SensorReading[], startTime: string, endTime: st
     const hour = parseInt(item.hour.split(':')[0], 10);
     return hour >= startHour && hour <= endHour;
   });
-}
-
-// ✅ Servis fonksiyonu
-export async function getSensorHistoryData(
-  date: string,
-  startTime: string,
-  endTime: string
-): Promise<SensorHistoryData> {
-  console.log(`Fetching mock data for date=${date}, start=${startTime}, end=${endTime}`);
-
-  const sensor1 = generateMockReadings();
-  const sensor2 = generateMockReadings();
-
-  return {
-    sensor1: filterByTimeRange(sensor1, startTime, endTime),
-    sensor2: filterByTimeRange(sensor2, startTime, endTime),
-  };
 }
