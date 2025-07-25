@@ -1,0 +1,6 @@
+# Ortak ignore'lar
+node_modules/
+build/
+dist/
+.env
+.env.*
