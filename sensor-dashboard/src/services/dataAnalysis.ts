@@ -272,7 +272,7 @@ export const comparePeriodsData = (currentData: SensorData[], previousData: Sens
 };
 
 // 5. Günlük/Haftalık/Aylık Veri Grupalama
-export const groupDataByPeriod = (data: SensorData[], period: 'daily' | 'weekly' | 'monthly') => {
+export const groupDataByPeriod = (data: SensorData[], period: 'day' | 'week' | 'month') => {
   const grouped: { [key: string]: SensorData[] } = {};
   
   data.forEach(item => {
@@ -280,15 +280,15 @@ export const groupDataByPeriod = (data: SensorData[], period: 'daily' | 'weekly'
     let key: string;
     
     switch (period) {
-      case 'daily':
+      case 'day':
         key = date.toISOString().split('T')[0]; // YYYY-MM-DD
         break;
-      case 'weekly':
+      case 'week':
         const startOfWeek = new Date(date);
         startOfWeek.setDate(date.getDate() - date.getDay());
         key = startOfWeek.toISOString().split('T')[0];
         break;
-      case 'monthly':
+      case 'month':
         key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         break;
     }

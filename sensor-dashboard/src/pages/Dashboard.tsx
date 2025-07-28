@@ -24,9 +24,14 @@ import { exportService, ReportData } from '../services/exportService';
 
 const Dashboard: React.FC = () => {
   // isDarkMode kaldırıldı çünkü kullanılmıyor
-  const [sensorData, setSensorData] = useState<{ sensor1: SensorData | null, sensor2: SensorData | null }>({
-    sensor1: null,
-    sensor2: null
+  const [sensorData, setSensorData] = useState<SensorData[]>(() => {
+    const saved = localStorage.getItem('lastSensorData');
+    try {
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
   const [allData, setAllData] = useState<SensorData[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -39,7 +44,7 @@ const Dashboard: React.FC = () => {
     humMax: 60
   });
   const [isUsingCachedData, setIsUsingCachedData] = useState(false);
-  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(() => getCacheTimestamp());
 
   // Gelişmiş analitik state'leri
   const [anomalies, setAnomalies] = useState<AnomalyResult[]>([]);
@@ -84,35 +89,26 @@ const Dashboard: React.FC = () => {
   const loadSensorData = async () => {
     try {
       const data = await fetchSensorData();
-      console.log('API\'den gelen ham veri:', data);
-      
       // En son verileri al
       const latestData = getLatestSensorData(data);
-      setSensorData(latestData);
-      
+      setSensorData(data);
+      setLastUpdate(getCacheTimestamp());
       // Tüm verileri sakla
       setAllData(data);
-      
       // Check if we're using cached data
       setIsUsingCachedData(isDataFromCache());
-      setLastUpdateTime(getCacheTimestamp());
-      
       // Gelişmiş analiz yap
       performAdvancedAnalysis(data);
-      
       // Alarmları kontrol et
       if (latestData.sensor1) {
         const newAlerts = checkAlerts(latestData.sensor1, settings);
         if (newAlerts.length > 0) {
           setAlerts(prev => [...prev, ...newAlerts]);
-          
-          // Yeni gelişmiş bildirim sistemi kullan
           for (const alert of newAlerts) {
             await notificationService.sendNotification(alert);
           }
         }
       }
-
       setError(null);
     } catch (err) {
       // Only set error if we have no data at all
@@ -199,9 +195,9 @@ const Dashboard: React.FC = () => {
           <div className="alert alert-warning alert-dismissible fade-in mb-3" role="alert">
             <i className="bi bi-wifi-off me-2"></i>
             <strong>Bağlantı Sorunu:</strong> En son kaydedilen veriler gösteriliyor
-            {lastUpdateTime && (
+            {lastUpdate && (
               <small className="ms-2">
-                (Son güncelleme: {lastUpdateTime.toLocaleString('tr-TR')})
+                (Son güncelleme: {lastUpdate.toLocaleString('tr-TR')})
               </small>
             )}
           </div>
@@ -221,8 +217,8 @@ const Dashboard: React.FC = () => {
                   {isUsingCachedData ? 'Bağlantı Kesildi' : 'Bağlı'}
                 </div>
                 <div className="text-muted small">
-                  Son güncelleme: {isUsingCachedData && lastUpdateTime ? 
-                    lastUpdateTime.toLocaleTimeString('tr-TR') : 
+                  Son güncelleme: {isUsingCachedData && lastUpdate ? 
+                    lastUpdate.toLocaleTimeString('tr-TR') : 
                     new Date().toLocaleTimeString('tr-TR')}
                 </div>
               </div>
@@ -293,16 +289,16 @@ const Dashboard: React.FC = () => {
             {/* Sensör Kartı */}
             <div className="row g-4 mb-4">
               <div className="col-12">
-                {sensorData.sensor1 && (
+                {sensorData.length > 0 && (
                   <div className="fade-in">
                     <SensorCard
-                      id={String(sensorData.sensor1.id)}
+                      id={String(sensorData[0].id)}
                       name="Ana Sensör"
-                      temperature={sensorData.sensor1.temperature}
-                      humidity={sensorData.sensor1.humidity}
-                      timestamp={sensorData.sensor1.measurement_time || sensorData.sensor1.measurementTime}
+                      temperature={sensorData[0].temperature}
+                      humidity={sensorData[0].humidity}
+                      timestamp={sensorData[0].measurement_time || sensorData[0].measurementTime}
                       thresholds={settings}
-                      alerts={alerts.filter(a => a.sensorId === String(sensorData.sensor1?.id))}
+                      alerts={alerts.filter(a => a.sensorId === String(sensorData[0]?.id))}
                     />
                   </div>
                 )}

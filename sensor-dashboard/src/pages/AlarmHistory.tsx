@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { SensorData, fetchSensorData } from '../services/api';
+import { fetchSensorData, SensorData, getCacheTimestamp } from '../services/api';
 
 interface Alarm {
   id: number;
@@ -17,7 +17,16 @@ interface Alarm {
 
 const AlarmHistory: React.FC = () => {
   // isDarkMode kaldırıldı çünkü kullanılmıyor
-  const [alarms, setAlarms] = useState<Alarm[]>([]);
+  const [alarms, setAlarms] = useState<Alarm[]>(() => {
+    const saved = localStorage.getItem('lastSensorData');
+    try {
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? generateAlarms(parsed) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(() => getCacheTimestamp());
   const [filteredAlarms, setFilteredAlarms] = useState<Alarm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -139,25 +148,24 @@ const AlarmHistory: React.FC = () => {
     return alarmList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   };
 
-  const loadAlarms = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       const data = await fetchSensorData();
       const alarmList = generateAlarms(data);
       setAlarms(alarmList);
-      setFilteredAlarms(alarmList);
+      setLastUpdate(getCacheTimestamp());
       setError(null);
     } catch (err) {
-      setError('Alarm verileri yüklenirken bir hata oluştu.');
-      console.error('Alarm yükleme hatası:', err);
+      setError('API bağlantı hatası!');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAlarms();
-    const interval = setInterval(loadAlarms, 60000); // Her dakika güncelle
+    loadData();
+    const interval = setInterval(loadData, 60000); // Her dakika güncelle
     return () => clearInterval(interval);
   }, []);
 
@@ -317,7 +325,7 @@ const AlarmHistory: React.FC = () => {
             <i className="bi bi-exclamation-circle text-danger" style={{ fontSize: '3rem' }}></i>
             <h4 className="mt-3 text-danger">Yükleme Hatası</h4>
             <p className="text-muted mb-4">{error}</p>
-            <button className="btn btn-primary" onClick={loadAlarms}>
+            <button className="btn btn-primary" onClick={loadData}>
               <i className="bi bi-arrow-clockwise me-2"></i>
               Tekrar Dene
             </button>

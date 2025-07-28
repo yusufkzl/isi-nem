@@ -35,7 +35,7 @@ const setCachedData = (data: SensorData[]) => {
 export const fetchSensorData = async (): Promise<SensorData[]> => {
     try {
     console.log('API çağrısı başlatılıyor...');
-    const response = await fetch('https://593e4bc3e6f4.ngrok-free.app/api/evant/getAll', {
+    const response = await fetch('https://eb2676e52e0c.ngrok-free.app/api/evant/getAll', {
       method: 'GET',
         headers: {
         'ngrok-skip-browser-warning': 'true',
@@ -64,20 +64,20 @@ export const fetchSensorData = async (): Promise<SensorData[]> => {
     
     console.log('İşlenmiş veri:', data.slice(0, 2));
     
-    // Cache successful data
+    // Sadece veri gerçekten doluysa cache et
+    if (Array.isArray(data) && data.length > 0) {
     setCachedData(data);
+    }
     
     return data;
   } catch (error) {
     console.error('API Hatası:', error);
-    
     // Return cached data if API fails
     const cachedData = getCachedData();
     if (cachedData && cachedData.length > 0) {
       console.log('API başarısız, önbellekten veri kullanılıyor:', cachedData.slice(0, 2));
       return cachedData;
     }
-    
     throw error;
   }
 };

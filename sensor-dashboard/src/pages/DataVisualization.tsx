@@ -16,7 +16,7 @@ import DatePicker from 'react-datepicker';
 import { FaDownload, FaCalendar } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
 import 'react-datepicker/dist/react-datepicker.css';
-import { SensorData, fetchSensorData } from '../services/api';
+import { fetchSensorData, SensorData, getCacheTimestamp } from '../services/api';
 
 // Chart.js bileşenlerini kaydet
 ChartJS.register(
@@ -34,7 +34,16 @@ const DataVisualization: React.FC = () => {
   const { isDarkMode } = useTheme();
   const [startDate, setStartDate] = useState<Date>(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
   const [endDate, setEndDate] = useState<Date>(new Date());
-  const [data, setData] = useState<SensorData[]>([]);
+  const [data, setData] = useState<SensorData[]>(() => {
+    const saved = localStorage.getItem('lastSensorData');
+    try {
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(() => getCacheTimestamp());
   const [isLoading, setIsLoading] = useState(false);
 
   // Verileri yükle
@@ -48,6 +57,7 @@ const DataVisualization: React.FC = () => {
         return itemDate >= startDate && itemDate <= endDate;
       });
       setData(filteredData);
+      setLastUpdate(getCacheTimestamp());
     } catch (error) {
       console.error('Veri yükleme hatası:', error);
     } finally {

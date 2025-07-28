@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Button, Form, Table, Badge } from 'react-bootstrap';
-import { fetchSensorData, SensorData } from '../services/api';
+import { fetchSensorData, SensorData, getCacheTimestamp } from '../services/api';
 import {
   calculateStats,
   calculateTrend,
@@ -16,30 +16,39 @@ import { useTheme } from '../context/ThemeContext';
 import { Line, Bar } from 'react-chartjs-2';
 
 interface ReportConfig {
-  type: 'daily' | 'weekly' | 'monthly';
+  type: 'day' | 'week' | 'month';
   includeStats: boolean;
   includeCharts: boolean;
   includeAnomalies: boolean;
   includeComparison: boolean;
   format: 'pdf' | 'excel' | 'csv';
   autoGenerate: boolean;
-  autoInterval: 'daily' | 'weekly' | 'monthly';
+  autoInterval: 'day' | 'week' | 'month';
 }
 
 const Reports: React.FC = () => {
   const { isDarkMode } = useTheme();
-  const [allData, setAllData] = useState<SensorData[]>([]);
+  const [allData, setAllData] = useState<SensorData[]>(() => {
+    const saved = localStorage.getItem('lastSensorData');
+    try {
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(() => getCacheTimestamp());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reportConfig, setReportConfig] = useState<ReportConfig>({
-    type: 'weekly',
+    type: 'day',
     includeStats: true,
     includeCharts: true,
     includeAnomalies: true,
-    includeComparison: true,
+    includeComparison: false,
     format: 'pdf',
     autoGenerate: false,
-    autoInterval: 'weekly'
+    autoInterval: 'day'
   });
 
   // Analiz sonuçları
@@ -58,6 +67,7 @@ const Reports: React.FC = () => {
       setLoading(true);
       const data = await fetchSensorData();
       setAllData(data);
+      setLastUpdate(getCacheTimestamp());
       
       // Analizleri yap
       const calculatedStats = calculateStats(data);
@@ -72,7 +82,7 @@ const Reports: React.FC = () => {
       
       setError(null);
     } catch (err) {
-      setError('Veriler yüklenirken bir hata oluştu.');
+      setError('API bağlantı hatası!');
       console.error('Veri yükleme hatası:', err);
     } finally {
       setLoading(false);
@@ -159,7 +169,7 @@ const Reports: React.FC = () => {
             end: data[data.length - 1]?.measurement_time || data[data.length - 1]?.measurementTime || new Date().toISOString()
           },
           correlations: calculateCorrelation(data),
-          anomalies: detectAnomalies(data, 2),
+          anomalies: reportConfig.includeAnomalies ? detectAnomalies(data, 2) : [],
           generatedAt: new Date().toISOString()
         };
       };
@@ -188,9 +198,9 @@ const Reports: React.FC = () => {
     return {
       labels: labels.map(label => {
         const date = new Date(label);
-        return reportConfig.type === 'daily' ? 
+        return reportConfig.type === 'day' ? 
           date.toLocaleDateString('tr-TR') :
-          reportConfig.type === 'weekly' ?
+          reportConfig.type === 'week' ?
           `Hafta ${date.toLocaleDateString('tr-TR')}` :
           `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}`;
       }),
@@ -253,11 +263,11 @@ const Reports: React.FC = () => {
                         <select 
                           className="form-select"
                           value={reportConfig.type}
-                          onChange={(e) => handleConfigChange('type', e.target.value as 'daily' | 'weekly' | 'monthly')}
+                          onChange={(e) => handleConfigChange('type', e.target.value as 'day' | 'week' | 'month')}
                         >
-                          <option value="daily">Günlük</option>
-                          <option value="weekly">Haftalık</option>
-                          <option value="monthly">Aylık</option>
+                          <option value="day">Günlük</option>
+                          <option value="week">Haftalık</option>
+                          <option value="month">Aylık</option>
                         </select>
                       </div>
 
@@ -340,11 +350,11 @@ const Reports: React.FC = () => {
                           <select 
                             className="form-select"
                             value={reportConfig.autoInterval}
-                            onChange={(e) => handleConfigChange('autoInterval', e.target.value as 'daily' | 'weekly' | 'monthly')}
+                            onChange={(e) => handleConfigChange('autoInterval', e.target.value as 'day' | 'week' | 'month')}
                           >
-                            <option value="daily">Günlük</option>
-                            <option value="weekly">Haftalık</option>
-                            <option value="monthly">Aylık</option>
+                            <option value="day">Günlük</option>
+                            <option value="week">Haftalık</option>
+                            <option value="month">Aylık</option>
                           </select>
                         </div>
                       )}
@@ -368,7 +378,7 @@ const Reports: React.FC = () => {
                       {stats && (
                         <div>
                           <small className="text-muted d-block">Toplam Ölçüm: {stats.totalReadings}</small>
-                          <small className="text-muted d-block">Son Güncelleme: {new Date(stats.lastUpdate).toLocaleDateString('tr-TR')}</small>
+                          <small className="text-muted d-block">Son Güncelleme: {lastUpdate ? new Date(lastUpdate).toLocaleDateString('tr-TR') : 'Yüklenmedi'}</small>
                           <small className="text-muted d-block">Anomali Sayısı: {anomalies.length}</small>
                           <small className="text-muted d-block">Korelasyon: {correlation?.coefficient.toFixed(3) || 'N/A'}</small>
                         </div>
@@ -410,7 +420,7 @@ const Reports: React.FC = () => {
                   <div className="col-12">
                     <div className={`card ${isDarkMode ? 'bg-secondary' : 'bg-light'}`}>
                       <div className="card-body">
-                        <h6 className="card-title">📊 {reportConfig.type === 'daily' ? 'Günlük' : reportConfig.type === 'weekly' ? 'Haftalık' : 'Aylık'} Karşılaştırma</h6>
+                        <h6 className="card-title">📊 {reportConfig.type === 'day' ? 'Günlük' : reportConfig.type === 'week' ? 'Haftalık' : 'Aylık'} Karşılaştırma</h6>
                         <Bar 
                           data={generateComparisonChart()}
                           options={{

@@ -13,7 +13,7 @@ const Login: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Basit doğrulama (örnek)
-    if (username === 'admin' && password === 'admin') {
+    if (username === '1234' && password === '1234') {
       login();
       setError('');
     } else {

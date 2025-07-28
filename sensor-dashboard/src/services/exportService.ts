@@ -238,11 +238,11 @@ class ExportService {
   }
 
   // Otomatik Rapor Planlama
-  scheduleAutoReport(interval: 'daily' | 'weekly' | 'monthly', callback: () => Promise<ReportData>): void {
+  scheduleAutoReport(interval: 'day' | 'week' | 'month', callback: () => Promise<ReportData>): void {
     const intervalMs = {
-      daily: 24 * 60 * 60 * 1000,
-      weekly: 7 * 24 * 60 * 60 * 1000,
-      monthly: 30 * 24 * 60 * 60 * 1000
+      day: 24 * 60 * 60 * 1000,
+      week: 7 * 24 * 60 * 60 * 1000,
+      month: 30 * 24 * 60 * 60 * 1000
     };
 
     setInterval(async () => {

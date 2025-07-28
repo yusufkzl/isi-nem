@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Button, Form, Badge } from 'react-bootstrap';
 import { Line, Bar, Scatter } from 'react-chartjs-2';
-import { fetchSensorData, SensorData, isDataFromCache } from '../services/api';
+import { fetchSensorData, SensorData, isDataFromCache, getCacheTimestamp } from '../services/api';
 
 interface SmartGroupedData {
   timestamp: string;
@@ -13,33 +13,33 @@ interface SmartGroupedData {
 }
 
 const Analytics: React.FC = () => {
-  const [sensorData, setSensorData] = useState<SensorData[]>([]);
+  const [sensorData, setSensorData] = useState<SensorData[]>(() => {
+    const saved = localStorage.getItem('lastSensorData');
+    try {
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUsingCachedData, setIsUsingCachedData] = useState(false);
   const [selectedSensor, setSelectedSensor] = useState<number>(0);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [chartType, setChartType] = useState<'line' | 'bar' | 'scatter'>('line');
-  
-  // Yeni gelişmiş seçenekler
   const [timeInterval, setTimeInterval] = useState<'auto' | '2min' | '15min' | '1hour' | '2hour' | 'daily'>('auto');
-  const [timeRange, setTimeRange] = useState({ startTime: '', endTime: '' }); // Saat aralığı filtresi
-  const [maxDataPoints, setMaxDataPoints] = useState(50); // Maksimum veri noktası
-  
-  // Analiz sonuçları (şu anda kullanılmıyor ama gelecekte kullanılabilir)
-  // const [trends, setTrends] = useState<{ temp: TrendData | null, hum: TrendData | null }>({ temp: null, hum: null });
-  // const [anomalies, setAnomalies] = useState<AnomalyResult[]>([]);
-  // const [correlation, setCorrelation] = useState<CorrelationResult | null>(null);
-  // const [comparison, setComparison] = useState<ComparisonResult | null>(null);
+  const [timeRange, setTimeRange] = useState({ startTime: '', endTime: '' });
+  const [maxDataPoints, setMaxDataPoints] = useState(50);
+  const [chartData, setChartData] = useState<any>({ labels: [], datasets: [] });
 
   const loadData = async () => {
     try {
       setLoading(true);
       const data = await fetchSensorData();
       setSensorData(data);
+      localStorage.setItem('lastSensorData', JSON.stringify(data));
       setIsUsingCachedData(isDataFromCache());
-      
-      // Tarih aralığını API verilerinden otomatik ayarla
       if (data.length > 0) {
         const sortedData = data.sort((a, b) => 
           new Date(a.measurement_time || a.measurementTime).getTime() - 
@@ -47,48 +47,41 @@ const Analytics: React.FC = () => {
         );
         const startDate = new Date(sortedData[0].measurement_time || sortedData[0].measurementTime);
         const endDate = new Date(sortedData[sortedData.length - 1].measurement_time || sortedData[sortedData.length - 1].measurementTime);
-        
         setDateRange({
           start: startDate.toISOString().split('T')[0],
           end: endDate.toISOString().split('T')[0]
         });
       }
-      
-      // performAnalysis(data); // Bu fonksiyon artık kullanılmıyor
       setError(null);
     } catch (err) {
-      // Only set error if we have no data at all
-      if (sensorData.length === 0) {
-      setError('Veri yüklenirken bir hata oluştu.');
-      }
+      setError('API bağlantı hatası!');
       console.error('Analytics veri yükleme hatası:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // performAnalysis fonksiyonu şu anda kullanılmıyor
-
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 300000); // Her 5 dakika güncelle
+    const interval = setInterval(loadData, 300000);
     return () => clearInterval(interval);
-  }, []); // loadData dependency kaldırıldı
+  }, []);
 
-  // Filtrelenmiş veri
+  useEffect(() => {
+    setChartData(getEnhancedChartData());
+  }, [sensorData, dateRange, timeRange, timeInterval, selectedSensor, maxDataPoints]);
+
   const getFilteredData = () => {
     let filtered = sensorData;
 
-    // Sensör filtresi
     if (selectedSensor > 0) {
       filtered = filtered.filter(d => d.id === selectedSensor);
     }
 
-    // Tarih filtresi
     if (dateRange.start && dateRange.end) {
       const startDate = new Date(dateRange.start);
       const endDate = new Date(dateRange.end);
-      endDate.setHours(23, 59, 59); // Günün sonuna kadar dahil et
+      endDate.setHours(23, 59, 59);
       
       filtered = filtered.filter(d => {
         const date = new Date(d.measurement_time || d.measurementTime);
@@ -96,19 +89,16 @@ const Analytics: React.FC = () => {
       });
     }
 
-    return filtered;
+    return Array.isArray(filtered) ? filtered : [];
   };
 
-  // Akıllı veri gruplama - SADECE 2 saatlik aralık
   const getSmartGroupedData = (): SmartGroupedData[] => {
     let filteredData = getFilteredData();
     if (filteredData.length === 0) return [];
 
-    // 2 saatlik aralık
     const groupInterval: 'hour' = 'hour';
     const intervalHours = 2;
 
-    // Verileri grupla
     const groupedData: { [key: string]: SensorData[] } = {};
     
     filteredData.forEach(item => {
@@ -123,7 +113,6 @@ const Analytics: React.FC = () => {
       groupedData[groupKey].push(item);
     });
 
-    // Ortalama değerleri hesapla
     const averagedData = Object.keys(groupedData)
       .sort()
       .map(key => {
@@ -135,7 +124,7 @@ const Analytics: React.FC = () => {
           temperature: Number(avgTemp.toFixed(1)),
           humidity: Number(avgHum.toFixed(1)),
           count: items.length,
-          period: 'hour',
+          period: 'hour' as const,
           intervalHours
         };
       });
@@ -143,13 +132,11 @@ const Analytics: React.FC = () => {
     return averagedData;
   };
 
-  // Label formatter - GG.AA.YYYY SS:00
   const formatLabel = (timestamp: string, period: 'hour', intervalHours: number) => {
     const date = new Date(timestamp);
     return `${date.toLocaleDateString('tr-TR')} ${String(date.getHours()).padStart(2, '0')}:00`;
   };
 
-  // Dinamik Y ekseni aralığı hesaplama - SABİT 0-100
   const calculateDynamicRanges = () => {
     return {
       tempMin: 0,
@@ -159,7 +146,6 @@ const Analytics: React.FC = () => {
     };
   };
 
-  // Gelişmiş tooltip formatter
   const formatTooltipTitle = (context: any, smartData: SmartGroupedData[]) => {
     const dataIndex = context[0].dataIndex;
     const item = smartData[dataIndex];
@@ -213,29 +199,9 @@ const Analytics: React.FC = () => {
     return `${name}: ${value}`;
   };
 
-  // Gelişmiş grafik verisi oluştur
   const getEnhancedChartData = () => {
     const filteredData = getFilteredData();
     
-    // if (showPredictions && analysisType === 'trend') { // Bu kısım artık kullanılmıyor
-    //   return generatePredictionChart(filteredData, 'temperature');
-    // }
-    
-    // if (analysisType === 'correlation' && chartType === 'scatter') { // Bu kısım artık kullanılmıyor
-    //   return {
-    //     datasets: [{
-    //       label: 'Sıcaklık vs Nem',
-    //       data: filteredData.map(d => ({ x: d.temperature, y: d.humidity })),
-    //       backgroundColor: 'rgba(75, 192, 192, 0.5)',
-    //       borderColor: 'rgba(75, 192, 192, 1)',
-    //       borderWidth: 2,
-    //       pointRadius: 4,
-    //       pointHoverRadius: 6
-    //     }]
-    //   };
-    // }
-
-    // Akıllı gruplama kullan
     const smartData = getSmartGroupedData();
     
       return {
@@ -246,10 +212,10 @@ const Analytics: React.FC = () => {
           data: smartData.map(d => d.temperature),
           borderColor: 'rgba(255, 99, 132, 1)',
           backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          borderWidth: 4, // Daha kalın çizgi
+          borderWidth: 4,
           fill: false,
           tension: 0.3,
-          pointRadius: 6, // Daha büyük noktalar
+          pointRadius: 6,
           pointHoverRadius: 10,
           pointBackgroundColor: 'rgba(255, 99, 132, 1)',
           pointBorderColor: '#fff',
@@ -261,10 +227,10 @@ const Analytics: React.FC = () => {
           data: smartData.map(d => d.humidity),
           borderColor: 'rgba(54, 162, 235, 1)',
           backgroundColor: 'rgba(54, 162, 235, 0.2)',
-          borderWidth: 4, // Daha kalın çizgi
+          borderWidth: 4,
           fill: false,
           tension: 0.3,
-          pointRadius: 6, // Daha büyük noktalar
+          pointRadius: 6,
           pointHoverRadius: 10,
           pointBackgroundColor: 'rgba(54, 162, 235, 1)',
           pointBorderColor: '#fff',
@@ -275,7 +241,6 @@ const Analytics: React.FC = () => {
     };
   };
 
-  // Grafik seçenekleri - geliştirilmiş
   const getChartOptions = () => {
     const smartData = getSmartGroupedData();
     const sampleItem = smartData[0];
@@ -347,7 +312,7 @@ const Analytics: React.FC = () => {
           ticks: {
             maxRotation: 45,
             minRotation: 0,
-            maxTicksLimit: Math.min(12, smartData.length) // Veri sayısına göre dinamik
+            maxTicksLimit: Math.min(12, smartData.length)
           }
         },
         y: {
@@ -367,7 +332,7 @@ const Analytics: React.FC = () => {
           },
           ticks: {
             color: 'rgba(255, 99, 132, 1)',
-            stepSize: 10, // 10 derecelik sabit adımlar (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+            stepSize: 10,
             callback: function(value: any) {
               return value + '°C';
             }
@@ -394,7 +359,7 @@ const Analytics: React.FC = () => {
           },
           ticks: {
             color: 'rgba(54, 162, 235, 1)',
-            stepSize: 10, // 10%'lik sabit adımlar (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+            stepSize: 10,
             callback: function(value: any) {
               return value + '%';
             }
@@ -413,7 +378,46 @@ const Analytics: React.FC = () => {
     return sensorIds.sort((a, b) => a - b);
   };
 
-  if (loading) {
+  const renderErrorBanner = () => {
+    const lastUpdate = getCacheTimestamp();
+    if (error && sensorData.length > 0) {
+      return (
+        <div className="alert alert-warning text-center" role="alert">
+          <i className="bi bi-exclamation-triangle me-2"></i>
+          API bağlantı hatası! Son yüklenen veriler gösteriliyor.<br/>
+          <span className="small text-muted">Son veri güncelleme: {lastUpdate ? lastUpdate.toLocaleString('tr-TR') : 'Bilinmiyor'}</span>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const renderConnectionStatus = () => {
+    const isOffline = !!error || sensorData.length === 0;
+    const lastUpdate = getCacheTimestamp();
+    return (
+      <div className="d-flex align-items-center gap-3 mb-2">
+        <span>
+          {isOffline ? (
+            <span className="badge bg-danger">
+              <i className="bi bi-x-circle me-1"></i>
+              API bağlantı hatası!
+            </span>
+          ) : (
+            <span className="badge bg-success">
+              <i className="bi bi-check-circle me-1"></i>
+              API Bağlantısı Var
+            </span>
+          )}
+        </span>
+        <span className="text-muted small">
+          Son güncelleme: {lastUpdate ? lastUpdate.toLocaleString('tr-TR') : 'Bilinmiyor'}
+        </span>
+      </div>
+    );
+  };
+
+  if (loading && sensorData.length === 0) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '50vh' }}>
         <div className="text-center">
@@ -442,11 +446,12 @@ const Analytics: React.FC = () => {
     );
   }
 
-  const chartData = getEnhancedChartData();
   const ChartComponent = chartType === 'bar' ? Bar : chartType === 'scatter' ? Scatter : Line;
 
   return (
     <div className="container-fluid">
+      {renderConnectionStatus()}
+      {renderErrorBanner()}
       {/* Başlık */}
       <div className="row mb-4">
         <div className="col-12">
