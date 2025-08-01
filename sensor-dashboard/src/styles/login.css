@@ -1,0 +1,84 @@
+.login-bg {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e0e7ff 0%, #f0fdfa 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-card {
+  border-radius: 18px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  backdrop-filter: blur(2px);
+  background: rgba(255,255,255,0.95);
+  transition: box-shadow 0.3s;
+}
+.login-card:hover {
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.22);
+}
+.login-logo {
+  width: 60px;
+  margin-bottom: 16px;
+}
+.login-split-bg {
+  min-height: 100vh;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-split-container {
+  display: flex;
+  width: 900px;
+  min-height: 540px;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.10);
+  overflow: hidden;
+}
+.login-split-left {
+  flex: 1.2;
+  background: linear-gradient(135deg, #e0e7ff 0%, #f0fdfa 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+.login-illustration {
+  max-width: 100%;   /* kutunun genişliğini aşma */
+  max-height: 100%;  /* kutunun yüksekliğini aşma */
+  width: auto;       /* genişliği otomatik ayarla */
+  height: auto;      /* yüksekliği otomatik ayarla */
+  object-fit: contain; /* orantıyı koruyarak kutuya sığdır */
+  display: block;
+  margin: 0 auto;    /* ortala */
+}
+.login-split-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+.login-form-box {
+  width: 100%;
+  max-width: 340px;
+}
+.login-title {
+  font-weight: 700;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+@media (max-width: 900px) {
+  .login-split-container { flex-direction: column; width: 98vw; min-height: unset; }
+  .login-split-left, .login-split-right { flex: unset; padding: 24px; }
+  .login-illustration { max-width: 220px; }
+}
+input[type="checkbox"] {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  accent-color: #4caf50;
+}
